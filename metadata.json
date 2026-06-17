@@ -1,0 +1,8 @@
+{
+  "name": "8-Bit TM Platformer",
+  "description": "An 8-bit retro platform game inspired by Google's offline platformer, controlled by local inputs or a Teachable Machine camera model.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

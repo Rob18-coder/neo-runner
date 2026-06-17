@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-press-start: "Press Start 2P", monospace;
+  --font-tech-mono: "Share Tech Mono", monospace;
+}
+
+body {
+  background-color: #312e81;
+  color: #ffffff;
+  font-family: var(--font-tech-mono), monospace;
+  image-rendering: pixelated;
+}
+
+/* Custom retro glowing classes & shadows from the Vibrant Palette theme */
+.pixel-text-shadow {
+  text-shadow: 4px 4px 0px #000000;
+}
+
+.retro-glow-emerald {
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 2px 2px 0px #000;
+}
+
+.retro-glow-amber {
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 2px 2px 0px #000;
+}
+
+.retro-glow-yellow {
+  text-shadow: 3px 3px 0px #000000;
+}
+
+/* Custom scanlines */
+.scanlines-overlay {
+  background: repeating-linear-gradient(
+    rgba(0,0,0,0.15) 0px,
+    rgba(0,0,0,0.15) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  z-index: 10;
+  pointer-events: none;
+}
+
+
