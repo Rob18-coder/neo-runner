@@ -20,7 +20,7 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
   onModelLoadedStateChange,
 }) => {
   // Config state
-  const [modelUrl, setModelUrl] = useState<string>('https://teachablemachine.withgoogle.com/models/vO_c3-NfD/'); // Placeholder / default or empty
+  const [modelUrl, setModelUrl] = useState<string>(() => window.location.origin + '/Model/');
   const [modelClasses, setModelClasses] = useState<string[]>([]);
   const [classMappings, setClassMappings] = useState<Record<string, GameControlAction>>({});
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -80,8 +80,9 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
   };
 
   // Load model from custom URL
-  const loadTeachableMachineModel = async () => {
-    if (!modelUrl) {
+  const loadTeachableMachineModel = async (customUrl?: string) => {
+    const targetUrl = customUrl || modelUrl;
+    if (!targetUrl) {
       setErrorMessage('Please type or paste a Teachable Machine model URL first.');
       return;
     }
@@ -95,7 +96,7 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
         throw new Error('Failed to load TensorFlow or Teachable Machine CDN SDKs.');
       }
 
-      const cleanUrl = sanitizeModelUrl(modelUrl);
+      const cleanUrl = sanitizeModelUrl(targetUrl);
       const modelJson = cleanUrl + 'model.json';
       const metadataJson = cleanUrl + 'metadata.json';
 
@@ -111,9 +112,9 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
       const initialMappings: Record<string, GameControlAction> = {};
       labels.forEach((label: string) => {
         const lower = label.toLowerCase();
-        if (lower.includes('jump') || lower.includes('up') || lower.includes('fly')) {
+        if (lower.includes('jump') || lower.includes('up') || lower.includes('fly') || lower === 'happy') {
           initialMappings[label] = 'JUMP';
-        } else if (lower.includes('duck') || lower.includes('down') || lower.includes('slide')) {
+        } else if (lower.includes('duck') || lower.includes('down') || lower.includes('slide') || lower === 'angry' || lower === 'crouch') {
           initialMappings[label] = 'DUCK';
         } else if (lower.includes('left')) {
           initialMappings[label] = 'LEFT';
@@ -140,10 +141,26 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
     }
   };
 
+  // Load local model automatically on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadTeachableMachineModel(window.location.origin + '/Model/');
+  }, []);
+
   // Start real webcam preview and prediction loops
   const startWebcam = async () => {
     if (!isLoaded || !modelRef.current) {
       setErrorMessage('Load a Teachable Machine model before launching the Camera.');
+      return;
+    }
+
+    // Check for secure context / mediaDevices support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const isSecure = window.isSecureContext;
+      setErrorMessage(
+        `Webcam access is not supported by this browser or context. ` +
+        `Webcams require a secure context (HTTPS or localhost). Current context secure: ${isSecure ? 'Yes' : 'No'}`
+      );
       return;
     }
 
@@ -153,29 +170,28 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
       const size = 180;
       const flip = true;
       const webcam = new window.tmImage.Webcam(size, size, flip);
-      await webcam.setup(); // Triggers browser camera prompt
+      
+      // Setup webcam (request browser permission)
+      await webcam.setup({}); 
       await webcam.play();
       webcamRef.current = webcam;
 
-      // Mount inside Ref
+      // Mount the TM canvas (not the raw video element) inside the container
       if (webcamContainerRef.current) {
         webcamContainerRef.current.innerHTML = '';
-        webcamContainerRef.current.appendChild(webcam.webcam);
-        // Style the canvas internally to make it 100% responsive
-        const childCanvas = webcamContainerRef.current.querySelector('canvas');
-        if (childCanvas) {
-          childCanvas.style.width = '100%';
-          childCanvas.style.height = '100%';
-          childCanvas.style.objectFit = 'cover';
-          childCanvas.style.borderRadius = '8px';
-          childCanvas.style.transform = 'scaleX(-1)'; // correct flip display
-        }
+        const canvas = webcam.canvas;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.objectFit = 'cover';
+        canvas.style.borderRadius = '8px';
+        webcamContainerRef.current.appendChild(canvas);
       }
 
       setIsWebcamActive(true);
     } catch (err: any) {
       console.error('Error starting webcam', err);
-      setErrorMessage('Could not initiate webcam. Check browser permissions.');
+      const detail = err?.message || err?.name || String(err);
+      setErrorMessage(`Could not initiate webcam. Details: ${detail}. Please check permissions/connections.`);
     }
   };
 
@@ -312,7 +328,7 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
               />
               <button
                 id="btn-load-model"
-                onClick={loadTeachableMachineModel}
+                onClick={() => loadTeachableMachineModel()}
                 disabled={isLoading}
                 className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-800 disabled:text-slate-600 text-black font-black rounded text-xs transition-all uppercase cursor-pointer flex items-center gap-1 border-b-4 border-yellow-600 active:border-b-0 active:translate-y-1"
               >
@@ -336,7 +352,8 @@ export const TeachableMachineController: React.FC<TeachableMachineControllerProp
             </div>
           )}
 
-          {/* Model Class Mapping lis          {isLoaded && modelClasses.length > 0 && (
+          {/* Model Class Mapping list */}
+          {isLoaded && modelClasses.length > 0 && (
             <div className="p-3 bg-black/40 rounded-lg border-2 border-white/10 transition-all text-left">
               <div className="flex justify-between items-center mb-2.5">
                 <h3 className="text-xs font-bold text-yellow-400 uppercase tracking-wide flex items-center gap-1.5">
